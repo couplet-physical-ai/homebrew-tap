@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${WANT:-}" ]]; then tag="v${WANT#v}"; else
-            tag=$(gh release view -R couplet-physical-ai/switchyard --json tagName --jq .tagName)
+            tag=$(gh release view -R couplet-physical-ai/switchyard --json tagName --jq .tagName 2>/dev/null) || { echo "no release yet"; exit 0; }
           fi
           v=${tag#v}
           zip="Switchyard-$v-arm64.zip"
@@ -44,6 +44,7 @@ jobs:
           [[ "$real" == "$sha" ]] || { echo "SHA256SUMS says $sha, the asset is $real"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"; echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Bump the cask
+        if: steps.rel.outputs.version != ''
         env:
           V: ${{ steps.rel.outputs.version }}
           SHA: ${{ steps.rel.outputs.sha }}

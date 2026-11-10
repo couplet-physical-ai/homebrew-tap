@@ -1,0 +1,64 @@
+# Keep Casks/switchyard.rb on the newest couplet-physical-ai/switchyard release.
+# The release workflow cannot push here (deploy keys are off for the org and it carries no
+# cross-repo token), so this repo bumps itself with its own GITHUB_TOKEN: on demand
+# (`gh workflow run bump-switchyard.yml -R couplet-physical-ai/homebrew-tap`, which
+# switchyard's scripts/release.sh runs once the release is up) and every 20 minutes.
+name: bump-switchyard
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the v (empty = the newest release)"
+        required: false
+  schedule:
+    - cron: "*/20 * * * *"
+permissions:
+  contents: write
+concurrency:
+  group: bump-switchyard
+  cancel-in-progress: false
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve the release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${WANT:-}" ]]; then tag="v${WANT#v}"; else
+            tag=$(gh release view -R couplet-physical-ai/switchyard --json tagName --jq .tagName)
+          fi
+          v=${tag#v}
+          zip="Switchyard-$v-arm64.zip"
+          gh release download "$tag" -R couplet-physical-ai/switchyard -p SHA256SUMS -O /tmp/SHA256SUMS
+          sha=$(awk -v f="$zip" '$2==f {print $1}' /tmp/SHA256SUMS)
+          [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || { echo "no sha256 for $zip in $tag's SHA256SUMS"; exit 1; }
+          # Never trust SHA256SUMS alone: hash the asset itself.
+          gh release download "$tag" -R couplet-physical-ai/switchyard -p "$zip" -O /tmp/app.zip
+          real=$(sha256sum /tmp/app.zip | cut -d' ' -f1)
+          [[ "$real" == "$sha" ]] || { echo "SHA256SUMS says $sha, the asset is $real"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"; echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Bump the cask
+        env:
+          V: ${{ steps.rel.outputs.version }}
+          SHA: ${{ steps.rel.outputs.sha }}
+        run: |
+          set -euo pipefail
+          f=Casks/switchyard.rb
+          cur=$(sed -nE 's/^  version "([^"]+)"/\1/p' "$f")
+          if [[ "$cur" == "$V" ]] && grep -q "sha256 \"$SHA\"" "$f"; then echo "cask already at $V"; exit 0; fi
+          # Only move forward (a manual dispatch may name an older version on purpose).
+          if [[ -z "${{ inputs.version }}" ]] && [[ "$(printf '%s\n%s\n' "$cur" "$V" | sort -V | tail -1)" != "$V" ]]; then
+            echo "newest release $V is older than the cask's $cur; leaving it"; exit 0; fi
+          sed -i -E "s/^  version \"[^\"]+\"/  version \"$V\"/; s/^  sha256 \"[0-9a-f]+\"/  sha256 \"$SHA\"/" "$f"
+          ruby -c "$f"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "switchyard $V"
+          git push -q origin HEAD:main
+          echo "bumped switchyard $cur -> $V ($(git rev-parse --short HEAD))"

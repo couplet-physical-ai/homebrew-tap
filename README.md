@@ -4,6 +4,7 @@ Homebrew casks for couplet-physical-ai apps.
 
 ```sh
 brew tap couplet-physical-ai/tap
+brew trust couplet-physical-ai/tap   # Homebrew 7+: allow casks from this non-official tap
 brew install --cask switchyard
 ```
 

@@ -1,6 +1,6 @@
 cask "switchyard" do
-  version "0.1.3"
-  sha256 "c7049acf2ee475b71751fcf3ed23a85a8f5cd47cb5e1601719ebb6c4627cde9a"
+  version "0.1.5"
+  sha256 "aa0d64b88dad8eec77db89ccc815be124b3c0cfd9a0fb1c35774f824ff57a06c"
 
   url "https://github.com/couplet-physical-ai/switchyard/releases/download/v#{version}/Switchyard-#{version}-arm64.zip"
   name "Switchyard"

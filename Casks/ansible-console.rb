@@ -15,7 +15,6 @@ cask "ansible-console" do
   # The app updates itself in place (Relaunch to update, latest.json feed), so `brew upgrade`
   # leaves it alone unless asked with --greedy; brew still installs the newest on a fresh install.
   auto_updates true
-
   depends_on arch: :arm64
   depends_on macos: :sonoma
 

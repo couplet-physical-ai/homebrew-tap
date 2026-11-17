@@ -1,6 +1,6 @@
 cask "ansible-console" do
-  version "0.1.1"
-  sha256 "7981bd504f9319f0d60043055eb55c2cb29d396cd0b36bb14e76ba22a0678364"
+  version "0.1.2"
+  sha256 "98430e63645be43cc73c3201284c63d9cd739ce286ce5db2a34cbc4b71a2f4cb"
 
   url "https://github.com/couplet-physical-ai/ansible-console/releases/download/v#{version}/Ansible-#{version}-arm64.zip"
   name "Ansible"
